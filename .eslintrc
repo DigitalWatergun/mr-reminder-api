@@ -1,0 +1,28 @@
+{
+    "env": {
+		"node": true,
+        "browser": true,
+        "es2021": true
+    },
+	"plugins": [
+		"import",
+		"prettier"
+	],
+    "extends": [
+        "eslint:recommended",
+		"plugin:import/recommended",
+		"plugin:prettier/recommended",
+    ],
+    "rules": {
+		"react/prop-types": 0,
+		"prettier/prettier": "error"
+	},
+	"settings": {
+		"import/resolver": {
+			"node": {
+			  "extensions": [".js", ".jsx"],
+			  "moduleDirectory": ["node_modules", "src/"]
+			}
+		}
+	}
+}

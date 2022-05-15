@@ -1,0 +1,57 @@
+{
+  "name": "reminder_api",
+  "version": "1.0.0",
+  "description": "A reminder application that allows you to set reminders and will notify you periodically to remind you.",
+  "main": "server.js",
+  "scripts": {
+    "build:dev": "webpack-cli --env mode=development --config ./webpack.config.js",
+    "build:prod": "webpack-cli --env mode=production --config ./webpack.config.js",
+    "start:dev": "npm run build:dev && node ./dist/server.bundle.js",
+    "start:prod": "node dist/server.bundle.js",
+    "prepare": "husky install",
+    "lint": "eslint . --ext .js",
+    "lint-fix": "eslint . --ext .js --ext .jsx --fix"
+  },
+  "lint-staged": {
+    "*.{js,jsx}": "eslint . --ext .js --ext .jsx"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/DigitalWatergun/reminder-app.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/DigitalWatergun/reminder-app/issues"
+  },
+  "homepage": "https://github.com/DigitalWatergun/reminder-app#readme",
+  "dependencies": {
+    "@google-cloud/pubsub": "^2.19.3",
+    "bcrypt": "^5.0.1",
+    "cookie-parser": "^1.4.6",
+    "cors": "^2.8.5",
+    "dotenv": "^10.0.0",
+    "express": "^4.17.2",
+    "googleapis": "^92.0.0",
+    "jsonwebtoken": "^8.5.1",
+    "lodash": "^4.17.21",
+    "mongoose": "^6.1.5",
+    "nodemailer": "^6.7.2",
+    "twilio": "^3.73.0",
+    "uuid": "^8.3.2"
+  },
+  "devDependencies": {
+    "eslint": "^8.15.0",
+    "eslint-config-prettier": "^8.5.0",
+    "eslint-plugin-import": "^2.26.0",
+    "eslint-plugin-prettier": "^4.0.0",
+    "husky": "^8.0.1",
+    "lint-staged": "^12.4.1",
+    "nodemon": "^2.0.16",
+    "nodemon-webpack-plugin": "^4.7.1",
+    "prettier": "^2.6.2",
+    "webpack": "^5.72.1",
+    "webpack-cli": "^4.9.2",
+    "webpack-node-externals": "^3.0.0"
+  }
+}
