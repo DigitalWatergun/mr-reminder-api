@@ -81,12 +81,14 @@ const loginUser = async (req, res) => {
                 await updateUser(user);
                 await removeRegisterHash(user);
                 res.cookie("jwta", accessToken, {
+                    domain: "mrreminder.xyz",
                     httpOnly: true,
                     maxAge: 600000,
                 });
                 res.cookie("jwtr", refreshToken, {
+                    domain: "mrreminder.xyz",
                     httpOnly: true,
-                    maxAge: 24 * 60 * 60 * 1000,
+                    maxAge: 60 * 60 * 1000,
                 });
                 res.json({
                     userId: user._id,
@@ -106,10 +108,15 @@ const loginUser = async (req, res) => {
             const refreshToken = generateRefreshToken(user);
             user["refreshToken"] = refreshToken;
             await updateUser(user);
-            res.cookie("jwta", accessToken, { httpOnly: true, maxAge: 600000 });
-            res.cookie("jwtr", refreshToken, {
+            res.cookie("jwta", accessToken, {
+                domain: "mrreminder.xyz",
                 httpOnly: true,
-                maxAge: 24 * 60 * 60 * 1000,
+                maxAge: 600000,
+            });
+            res.cookie("jwtr", refreshToken, {
+                domain: "mrreminder.xyz",
+                httpOnly: true,
+                maxAge: 60 * 60 * 1000,
             });
             res.json({
                 userId: user._id,
