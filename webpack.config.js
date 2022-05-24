@@ -5,14 +5,17 @@ const NodemonPlugin = require("nodemon-webpack-plugin");
 module.exports = (env) => {
     const config = {
         mode: env.mode,
-        entry: "./src/server.js",
+        devtool: env.mode == "development" ? "inline-source-map" : undefined,
+        entry: {
+            server: "./src/server.js",
+        },
         target: "node",
         experiments: {
             topLevelAwait: true,
         },
         externals: [nodeExternals()],
         output: {
-            filename: "server.bundle.js",
+            filename: "[name].bundle.js",
             path: path.resolve(__dirname, "dist"),
         },
         plugins: [new NodemonPlugin()],

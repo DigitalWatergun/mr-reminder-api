@@ -6,7 +6,7 @@
   "scripts": {
     "build:dev": "webpack-cli --env mode=development --config ./webpack.config.js",
     "build:prod": "webpack-cli --env mode=production --config ./webpack.config.js",
-    "start:dev": "npm run build:dev && node ./dist/server.bundle.js",
+    "start:dev": "webpack-cli --env mode=development --config ./webpack.config.js --watch",
     "start:prod": "node dist/server.bundle.js",
     "prepare": "husky install",
     "lint": "eslint . --ext .js",

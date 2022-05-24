@@ -21,6 +21,8 @@ import {
     sendRegistrationEmail,
     sendTempPassword,
 } from "../emitter/notifications/mailer/mailer.js";
+import dotenv from "dotenv";
+dotenv.config();
 
 const addUser = async (req, res) => {
     const validateStatus = validateUserRegister(req.body);
@@ -81,12 +83,12 @@ const loginUser = async (req, res) => {
                 await updateUser(user);
                 await removeRegisterHash(user);
                 res.cookie("jwta", accessToken, {
-                    domain: "mrreminder.xyz",
+                    domain: process.env.BASE_URL,
                     httpOnly: true,
                     maxAge: 600000,
                 });
                 res.cookie("jwtr", refreshToken, {
-                    domain: "mrreminder.xyz",
+                    domain: process.env.BASE_URL,
                     httpOnly: true,
                     maxAge: 60 * 60 * 1000,
                 });
@@ -109,12 +111,12 @@ const loginUser = async (req, res) => {
             user["refreshToken"] = refreshToken;
             await updateUser(user);
             res.cookie("jwta", accessToken, {
-                domain: "mrreminder.xyz",
+                domain: process.env.BASE_URL,
                 httpOnly: true,
                 maxAge: 600000,
             });
             res.cookie("jwtr", refreshToken, {
-                domain: "mrreminder.xyz",
+                domain: process.env.BASE_URL,
                 httpOnly: true,
                 maxAge: 60 * 60 * 1000,
             });
