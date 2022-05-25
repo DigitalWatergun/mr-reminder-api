@@ -1,11 +1,35 @@
 import dotenv from "dotenv";
 import jwt from "jsonwebtoken";
+import { OAuth2Client } from "google-auth-library";
 import { refreshAccessToken } from "../auth.js";
 dotenv.config();
 
 const verifyJWT = (req, res, next) => {
     const accessToken = req.cookies.jwta;
     const refreshToken = req.cookies.jwtr;
+    const googleToken = req.cookies.jwtg;
+
+    if (googleToken) {
+        console.log(googleToken);
+        const verifyGoogleToken = async (token) => {
+            try {
+                const client = new OAuth2Client(
+                    process.env.GOOGLE_OAUTH_CLIENT_ID
+                );
+
+                await client.verifyIdToken({
+                    idToken: token,
+                    audience: process.env.GOOGLE_OAUTH_CLIENT_ID,
+                });
+
+                next();
+            } catch (err) {
+                return res.status(401).send(err.message);
+            }
+        };
+
+        verifyGoogleToken(googleToken);
+    }
 
     if (accessToken === null || accessToken === undefined) {
         if (refreshToken === null || refreshToken === undefined) {

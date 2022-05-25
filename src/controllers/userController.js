@@ -2,6 +2,7 @@ import _ from "lodash";
 import { randomBytes } from "crypto";
 import bcrypt from "bcrypt";
 import { v4 as uuid } from "uuid";
+import { OAuth2Client } from "google-auth-library";
 import { generateAccessToken, generateRefreshToken } from "../auth.js";
 import {
     queryUserById,
@@ -23,6 +24,21 @@ import {
 } from "../emitter/notifications/mailer/mailer.js";
 import dotenv from "dotenv";
 dotenv.config();
+
+const verifyGoogleToken = async (token) => {
+    try {
+        const client = new OAuth2Client(process.env.GOOGLE_OAUTH_CLIENT_ID);
+
+        const ticket = await client.verifyIdToken({
+            idToken: token,
+            audience: process.env.GOOGLE_OAUTH_CLIENT_ID,
+        });
+
+        return ticket;
+    } catch (err) {
+        return err;
+    }
+};
 
 const addUser = async (req, res) => {
     const validateStatus = validateUserRegister(req.body);
@@ -64,24 +80,109 @@ const addUser = async (req, res) => {
 };
 
 const loginUser = async (req, res) => {
-    const username = _.toLower(req.body.username);
-    const user = (await queryUserByUsername(username))[0];
+    const loginData = req.body;
 
-    if (user === undefined) {
-        res.status(400).json("The username or password is incorrect.");
-        console.log("The user does not exist.");
-    } else {
-        if (!(await bcrypt.compare(req.body.password, user.password))) {
-            console.log("The username or password is not correct.");
-            res.status(403).send("The username or password is incorrect.");
-        } else if (req.body.registerHash !== undefined) {
-            if (req.body.registerHash === user.registerHash) {
+    if (loginData.authType === "google") {
+        const token = loginData.data.credential;
+        const ticketResponse = await verifyGoogleToken(token);
+        const ticketPayload = ticketResponse.payload;
+
+        const username = _.toLower(ticketPayload.email.split("@")[0]);
+        const user = (await queryUserByUsername(username))[0];
+        if (user === undefined) {
+            const user = {
+                _id: ticketPayload.sub,
+                active: true,
+                username: username,
+                userDisplayName: username,
+                email: ticketPayload.email,
+            };
+            const result = await createUser(user);
+            if (result.error) {
+                if (
+                    result.error.message.includes(
+                        "E11000 duplicate key error collection"
+                    )
+                ) {
+                    res.status(500).send(
+                        "A user with this username already exists."
+                    );
+                } else {
+                    res.status(500).send(result.error.message);
+                }
+            } else {
+                res.cookie("jwtg", token, {
+                    domain: process.env.BASE_URL,
+                    httpOnly: true,
+                    maxAge: 600000,
+                });
+                res.json({
+                    userId: user._id,
+                    username: user.userDisplayName,
+                });
+            }
+        } else {
+            user["refreshToken"] = token;
+            await updateUser(user);
+            res.cookie("jwtg", token, {
+                domain: process.env.BASE_URL,
+                httpOnly: true,
+                maxAge: 600000,
+            });
+            res.json({
+                userId: user._id,
+                username: user.userDisplayName,
+            });
+        }
+    } else if (loginData.authType === "local") {
+        const username = _.toLower(loginData.data.username);
+        const user = (await queryUserByUsername(username))[0];
+
+        if (user === undefined) {
+            res.status(400).json("The username or password is incorrect.");
+            console.log("The user does not exist.");
+        } else {
+            if (
+                !(await bcrypt.compare(loginData.data.password, user.password))
+            ) {
+                console.log("The username or password is not correct.");
+                res.status(403).send("The username or password is incorrect.");
+            } else if (loginData.data.registerHash !== undefined) {
+                if (loginData.data.registerHash === user.registerHash) {
+                    const accessToken = generateAccessToken(user);
+                    const refreshToken = generateRefreshToken(user);
+                    user["refreshToken"] = refreshToken;
+                    user["active"] = true;
+                    await updateUser(user);
+                    await removeRegisterHash(user);
+                    res.cookie("jwta", accessToken, {
+                        domain: process.env.BASE_URL,
+                        httpOnly: true,
+                        maxAge: 600000,
+                    });
+                    res.cookie("jwtr", refreshToken, {
+                        domain: process.env.BASE_URL,
+                        httpOnly: true,
+                        maxAge: 60 * 60 * 1000,
+                    });
+                    res.json({
+                        userId: user._id,
+                        username: user.userDisplayName,
+                        changePassword: user.changePassword,
+                    });
+                } else {
+                    res.status(401).send("The activation code is incorrect.");
+                }
+            } else if (!user.active) {
+                res.status(401).send(
+                    "The user needs to be activated. Please check your email for the activation code."
+                );
+            } else {
+                console.log("The password is correct.");
                 const accessToken = generateAccessToken(user);
                 const refreshToken = generateRefreshToken(user);
                 user["refreshToken"] = refreshToken;
-                user["active"] = true;
                 await updateUser(user);
-                await removeRegisterHash(user);
                 res.cookie("jwta", accessToken, {
                     domain: process.env.BASE_URL,
                     httpOnly: true,
@@ -97,34 +198,7 @@ const loginUser = async (req, res) => {
                     username: user.userDisplayName,
                     changePassword: user.changePassword,
                 });
-            } else {
-                res.status(401).send("The activation code is incorrect.");
             }
-        } else if (!user.active) {
-            res.status(401).send(
-                "The user needs to be activated. Please check your email for the activation code."
-            );
-        } else {
-            console.log("The password is correct.");
-            const accessToken = generateAccessToken(user);
-            const refreshToken = generateRefreshToken(user);
-            user["refreshToken"] = refreshToken;
-            await updateUser(user);
-            res.cookie("jwta", accessToken, {
-                domain: process.env.BASE_URL,
-                httpOnly: true,
-                maxAge: 600000,
-            });
-            res.cookie("jwtr", refreshToken, {
-                domain: process.env.BASE_URL,
-                httpOnly: true,
-                maxAge: 60 * 60 * 1000,
-            });
-            res.json({
-                userId: user._id,
-                username: user.userDisplayName,
-                changePassword: user.changePassword,
-            });
         }
     }
 };
