@@ -5,7 +5,7 @@ const NodemonPlugin = require("nodemon-webpack-plugin");
 module.exports = (env) => {
     const config = {
         mode: env.mode,
-        devtool: env.mode == "development" ? "inline-source-map" : undefined,
+        devtool: env.mode == "development" ? "source-map" : undefined,
         entry: {
             server: "./src/server.js",
         },

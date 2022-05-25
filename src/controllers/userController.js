@@ -254,6 +254,7 @@ const logoutUser = async (req, res) => {
     if (req.cookies) {
         res.clearCookie("jwta");
         res.clearCookie("jwtr");
+        res.clearCookie("jwtg");
     }
     res.send("User has been logged out.");
 };
