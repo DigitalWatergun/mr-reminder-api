@@ -123,6 +123,7 @@ const loginUser = async (req, res) => {
                 res.json({
                     userId: user._id,
                     username: user.userDisplayName,
+                    type: user.type,
                 });
             }
         } else {
@@ -136,6 +137,7 @@ const loginUser = async (req, res) => {
             res.json({
                 userId: user._id,
                 username: user.userDisplayName,
+                type: user.type,
             });
         }
     } else if (loginData.authType === "local") {
@@ -173,6 +175,7 @@ const loginUser = async (req, res) => {
                         userId: user._id,
                         username: user.userDisplayName,
                         changePassword: user.changePassword,
+                        type: user.type,
                     });
                 } else {
                     res.status(401).send("The activation code is incorrect.");
@@ -201,6 +204,7 @@ const loginUser = async (req, res) => {
                     userId: user._id,
                     username: user.userDisplayName,
                     changePassword: user.changePassword,
+                    type: user.type,
                 });
             }
         }
