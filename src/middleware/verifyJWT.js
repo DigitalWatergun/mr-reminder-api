@@ -11,7 +11,6 @@ const verifyJWT = (req, res, next) => {
     const googleToken = req.cookies.jwtg;
 
     if (googleToken) {
-        console.log("Google token found");
         const verifyGoogleToken = async (token) => {
             try {
                 const client = new OAuth2Client(

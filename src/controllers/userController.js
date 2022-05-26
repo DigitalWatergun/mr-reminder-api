@@ -211,24 +211,28 @@ const changeUserPassword = async (req, res) => {
     const id = req.body.userId;
     const user = (await queryUserById(id))[0];
 
-    const validateStatus = validateChangePassword(req.body);
-    if (!validateStatus.status) {
-        res.status(500).send(validateStatus.error);
-    } else if (user === undefined) {
-        res.status(400).send("Unable to find user");
-    } else if (
-        !(await bcrypt.compare(req.body.currentPassword, user.password))
-    ) {
-        res.status(403).send("The current password is incorrect.");
+    if (user.type === "google") {
+        res.status(400).send("This account is managed by Google.");
     } else {
-        console.log("The password is correct.");
-        const newPassword = await bcrypt.hash(req.body.newPassword, 15);
-        user["password"] = newPassword;
-        if (req.body.changePassword) {
-            user["changePassword"] = false;
+        const validateStatus = validateChangePassword(req.body);
+        if (!validateStatus.status) {
+            res.status(500).send(validateStatus.error);
+        } else if (user === undefined) {
+            res.status(400).send("Unable to find user");
+        } else if (
+            !(await bcrypt.compare(req.body.currentPassword, user.password))
+        ) {
+            res.status(403).send("The current password is incorrect.");
+        } else {
+            console.log("The password is correct.");
+            const newPassword = await bcrypt.hash(req.body.newPassword, 15);
+            user["password"] = newPassword;
+            if (req.body.changePassword) {
+                user["changePassword"] = false;
+            }
+            await updateUser(user);
+            res.sendStatus(200);
         }
-        await updateUser(user);
-        res.sendStatus(200);
     }
 };
 

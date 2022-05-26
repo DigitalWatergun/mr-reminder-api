@@ -58,7 +58,6 @@ const validateUserRegister = (body) => {
 
 const validateChangePassword = (body) => {
     const result = {};
-    console.log(body);
     switch (true) {
         case !("currentPassword" in body) ||
             !("newPassword" in body) ||
