@@ -47,6 +47,7 @@ const addUser = async (req, res) => {
     } else {
         const user = {
             _id: uuid(),
+            type: "local",
             active: false,
             username: _.toLower(req.body.username),
             userDisplayName: req.body.username,
@@ -63,7 +64,7 @@ const addUser = async (req, res) => {
                 )
             ) {
                 res.status(500).send(
-                    "A user with this username already exists."
+                    "An account with this username or email already exists."
                 );
             } else {
                 res.status(500).send(result.error.message);
@@ -87,15 +88,18 @@ const loginUser = async (req, res) => {
         const ticketResponse = await verifyGoogleToken(token);
         const ticketPayload = ticketResponse.payload;
 
-        const username = _.toLower(ticketPayload.email.split("@")[0]);
-        const user = (await queryUserByUsername(username))[0];
+        const user = (
+            await queryUserByUsername(ticketPayload.email, "google")
+        )[0];
         if (user === undefined) {
             const user = {
                 _id: ticketPayload.sub,
+                type: "google",
                 active: true,
-                username: username,
-                userDisplayName: username,
+                username: ticketPayload.email,
+                userDisplayName: ticketPayload.given_name,
                 email: ticketPayload.email,
+                refreshToken: token,
             };
             const result = await createUser(user);
             if (result.error) {
@@ -105,7 +109,7 @@ const loginUser = async (req, res) => {
                     )
                 ) {
                     res.status(500).send(
-                        "A user with this username already exists."
+                        "An account with this username or email already exists."
                     );
                 } else {
                     res.status(500).send(result.error.message);
@@ -136,7 +140,7 @@ const loginUser = async (req, res) => {
         }
     } else if (loginData.authType === "local") {
         const username = _.toLower(loginData.data.username);
-        const user = (await queryUserByUsername(username))[0];
+        const user = (await queryUserByUsername(username, "local"))[0];
 
         if (user === undefined) {
             res.status(400).json("The username or password is incorrect.");
@@ -266,6 +270,7 @@ const deleteAccount = async (req, res) => {
         if (result.deletedCount === 1) {
             res.clearCookie("jwta");
             res.clearCookie("jwtr");
+            res.clearCookie("jwtg");
             res.send(result);
         } else {
             res.status(500).send("Unable to delete user.");
