@@ -37,6 +37,7 @@ const verifyGoogleToken = async (token) => {
         return ticket;
     } catch (err) {
         return err;
+        // account for error return
     }
 };
 

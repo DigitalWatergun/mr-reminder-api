@@ -7,7 +7,7 @@ const queryUserById = async (id) => {
 };
 
 const queryUserByUsername = async (username, type) => {
-    const user = await User.find({ username: username, type: type });
+    const user = await User.find({ username, type });
 
     return user;
 };
