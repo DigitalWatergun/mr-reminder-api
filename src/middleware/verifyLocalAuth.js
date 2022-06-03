@@ -10,7 +10,6 @@ const verifyLocalAuth = (req, res, next, accessToken, refreshToken) => {
                 refreshToken,
                 process.env.JWT_REFRESH_TOKEN_SECRET
             );
-            console.log(user);
             const newAccessToken = refreshAccessToken(refreshToken);
             res.clearCookie("jwta");
             res.cookie("jwta", newAccessToken, {

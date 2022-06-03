@@ -11,10 +11,11 @@ import {
 
 const router = express.Router();
 
-router.route("/").post(addUser).delete(deleteAccount);
+router.post("/", addUser);
 router.post("/login", loginUser);
 router.post("/update", verifyJWT, changeUserPassword);
 router.post("/logout", logoutUser);
 router.post("/reset", resetUserPassword);
+router.delete("/", verifyJWT, deleteAccount);
 
 export { router as usersRoute };

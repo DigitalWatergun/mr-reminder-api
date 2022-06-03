@@ -74,7 +74,7 @@ const removeReminder = async (id) => {
     }
 };
 
-const removeReminderByUserId = async (userId) => {
+const removeRemindersByUserId = async (userId) => {
     try {
         await Reminder.deleteMany({ userId: userId });
 
@@ -91,5 +91,5 @@ export {
     findReminderById,
     filterReminders,
     updateReminder,
-    removeReminderByUserId,
+    removeRemindersByUserId,
 };

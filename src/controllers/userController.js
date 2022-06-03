@@ -17,7 +17,7 @@ import {
     validateUserRegister,
     validateChangePassword,
 } from "../validator/validator.js";
-import { removeReminderByUserId } from "../services/reminderService.js";
+import { removeRemindersByUserId } from "../services/reminderService.js";
 import {
     sendRegistrationEmail,
     sendTempPassword,
@@ -213,24 +213,25 @@ const loginUser = async (req, res) => {
 };
 
 const changeUserPassword = async (req, res) => {
-    const id = req.body.userId;
+    const body = req.body;
+    const id = req.user._id;
     const user = (await queryUserById(id))[0];
 
     if (user.type === "google") {
         res.status(400).send("This account is managed by Google.");
     } else {
-        const validateStatus = validateChangePassword(req.body);
+        const validateStatus = validateChangePassword(body);
         if (!validateStatus.status) {
             res.status(500).send(validateStatus.error);
         } else if (user === undefined) {
             res.status(400).send("Unable to find user");
         } else if (
-            !(await bcrypt.compare(req.body.currentPassword, user.password))
+            !(await bcrypt.compare(body.currentPassword, user.password))
         ) {
             res.status(403).send("The current password is incorrect.");
         } else {
             console.log("The password is correct.");
-            const newPassword = await bcrypt.hash(req.body.newPassword, 15);
+            const newPassword = await bcrypt.hash(body.newPassword, 15);
             user["password"] = newPassword;
             if (req.body.changePassword) {
                 user["changePassword"] = false;
@@ -243,6 +244,7 @@ const changeUserPassword = async (req, res) => {
 
 const resetUserPassword = async (req, res) => {
     const user = await queryUserByEmail(req.body.email);
+    console.log(user);
 
     if (user === null || user === undefined) {
         res.status(401).send(
@@ -273,9 +275,11 @@ const logoutUser = async (req, res) => {
 };
 
 const deleteAccount = async (req, res) => {
+    const user = req.user;
+    console.log(user);
     try {
-        await removeReminderByUserId(req.body.userId);
-        const result = await deleteUser(req.body.userId);
+        await removeRemindersByUserId(user._id);
+        const result = await deleteUser(user._id);
         if (result.deletedCount === 1) {
             res.clearCookie("jwta");
             res.clearCookie("jwtr");
