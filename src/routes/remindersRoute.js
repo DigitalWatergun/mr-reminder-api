@@ -8,7 +8,6 @@ import {
     changeReminder,
     runReminder,
     stopReminder,
-    listRunningReminders,
 } from "../controllers/reminderController.js";
 
 const router = express.Router();
@@ -23,7 +22,6 @@ router
 router.get("/title", getReminderById);
 router.post("/run", runReminder);
 router.post("/stop", stopReminder);
-router.get("/list", listRunningReminders);
 router.patch("/update", changeReminder);
 
 export { router as remindersRoute };

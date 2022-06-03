@@ -10,7 +10,7 @@ import {
 import { validateReminderForm } from "../validator/validator.js";
 import { eventEmitter } from "../emitter/reminderEmitter.js";
 
-const parseReqBody = (body) => {
+const generateReminderData = (body, userId) => {
     const data = {};
 
     if (body.dateEnable && "date" in body) {
@@ -63,21 +63,21 @@ const parseReqBody = (body) => {
     data["repeatEnable"] = body.repeatEnable;
     data["enableEmail"] = body.enableEmail;
     data["enableSMS"] = body.enableSMS;
-    data["userId"] = body.userId;
+    data["userId"] = userId;
 
     return data;
 };
 
 const getAllRemindersForUser = async (req, res) => {
-    const id = req.user._id;
-    const reminders = await queryAllRemindersByUserId(id);
+    const user = req.user;
+    const reminders = await queryAllRemindersByUserId(user._id);
 
     res.send(reminders);
 };
 
 const getReminderById = async (req, res) => {
-    const _id = req.body.id;
-    const reminder = await findReminderById(_id);
+    const body = req.body;
+    const reminder = await findReminderById(body._id);
 
     if (reminder) {
         return res.send(reminder);
@@ -105,11 +105,12 @@ const changeReminderStatus = async (reminder, status) => {
 };
 
 const changeReminder = async (req, res) => {
-    const validateStatus = validateReminderForm(req.body);
+    const { user, body } = req;
+    const validateStatus = validateReminderForm(body);
     if (!validateStatus.status) {
         res.status(500).send(validateStatus.error);
     } else {
-        const data = parseReqBody(req.body);
+        const data = generateReminderData(body, user._id);
         const reminder = await updateReminder(data);
 
         if (reminder) {
@@ -121,12 +122,13 @@ const changeReminder = async (req, res) => {
 };
 
 const postReminder = async (req, res) => {
-    const validateStatus = validateReminderForm(req.body);
+    const { user, body } = req;
+    const validateStatus = validateReminderForm(body);
     if (!validateStatus.status) {
         res.status(500).send(validateStatus.error);
     } else {
-        req.body["_id"] = uuid();
-        const data = parseReqBody(req.body);
+        body["_id"] = uuid();
+        const data = generateReminderData(body, user._id);
         const result = await createReminder(data);
 
         res.send(result);
@@ -134,15 +136,15 @@ const postReminder = async (req, res) => {
 };
 
 const deleteReminder = async (req, res) => {
-    const id = req.body._id;
-    const result = await removeReminder(id);
+    const body = req.body;
+    const result = await removeReminder(body._id);
 
     res.send(result);
 };
 
 const runReminder = async (req, res) => {
-    const _id = req.body._id;
-    const reminder = await findReminderById(_id);
+    const body = req.body;
+    const reminder = await findReminderById(body._id);
 
     if (reminder) {
         if (reminder.status === "INACTIVE") {
@@ -157,8 +159,8 @@ const runReminder = async (req, res) => {
 };
 
 const stopReminder = async (req, res) => {
-    const _id = req.body._id;
-    const reminder = await findReminderById(_id);
+    const body = req.body;
+    const reminder = await findReminderById(body._id);
 
     if (reminder) {
         eventEmitter.emit("STOP", reminder);
@@ -168,11 +170,6 @@ const stopReminder = async (req, res) => {
         console.log("No reminders found with that title");
         return res.send("No reminders found with that title.");
     }
-};
-
-const listRunningReminders = async (req, res) => {
-    const runningReminders = eventEmitter.emit("LIST");
-    return res.send(runningReminders);
 };
 
 export {
@@ -185,5 +182,4 @@ export {
     changeReminderStatus,
     runReminder,
     stopReminder,
-    listRunningReminders,
 };
