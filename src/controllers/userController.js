@@ -100,7 +100,6 @@ const loginUser = async (req, res) => {
                 username: ticketPayload.email,
                 userDisplayName: ticketPayload.given_name,
                 email: ticketPayload.email,
-                refreshToken: token,
             };
             const result = await createUser(user);
             if (result.error) {
@@ -128,8 +127,6 @@ const loginUser = async (req, res) => {
                 });
             }
         } else {
-            user["refreshToken"] = token;
-            await updateUser(user);
             res.cookie("jwtg", token, {
                 domain: process.env.BASE_URL,
                 httpOnly: true,
@@ -158,7 +155,6 @@ const loginUser = async (req, res) => {
                 if (loginData.data.registerHash === user.registerHash) {
                     const accessToken = generateAccessToken(user);
                     const refreshToken = generateRefreshToken(user);
-                    user["refreshToken"] = refreshToken;
                     user["active"] = true;
                     await updateUser(user);
                     await removeRegisterHash(user);
@@ -189,8 +185,6 @@ const loginUser = async (req, res) => {
                 console.log("The password is correct.");
                 const accessToken = generateAccessToken(user);
                 const refreshToken = generateRefreshToken(user);
-                user["refreshToken"] = refreshToken;
-                await updateUser(user);
                 res.cookie("jwta", accessToken, {
                     domain: process.env.BASE_URL,
                     httpOnly: true,
@@ -263,7 +257,6 @@ const resetUserPassword = async (req, res) => {
 
 const logoutUser = async (req, res) => {
     const user = (await queryUserById(req.body.userId))[0];
-    user["refreshToken"] = "";
     await updateUser(user);
     if (req.cookies) {
         res.clearCookie("jwta");
@@ -275,7 +268,6 @@ const logoutUser = async (req, res) => {
 
 const deleteAccount = async (req, res) => {
     const user = req.user;
-    console.log(user);
     try {
         await removeRemindersByUserId(user._id);
         const result = await deleteUser(user._id);

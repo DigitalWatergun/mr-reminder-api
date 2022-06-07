@@ -9,7 +9,6 @@ const userSchema = new mongoose.Schema({
     userDisplayName: String,
     password: String,
     email: { type: String, unique: true },
-    refreshToken: String,
     registerHash: String,
 });
 
