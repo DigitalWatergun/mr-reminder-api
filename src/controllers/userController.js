@@ -244,7 +244,6 @@ const changeUserPassword = async (req, res) => {
 
 const resetUserPassword = async (req, res) => {
     const user = await queryUserByEmail(req.body.email);
-    console.log(user);
 
     if (user === null || user === undefined) {
         res.status(401).send(
