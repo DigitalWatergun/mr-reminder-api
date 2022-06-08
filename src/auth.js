@@ -24,21 +24,51 @@ const generateRefreshToken = (user) => {
     return refreshToken;
 };
 
-const refreshAccessToken = (token) => {
-    console.log("Refreshing access token...");
-    const accessToken = jwt.verify(
-        token,
-        process.env.JWT_REFRESH_TOKEN_SECRET,
-        (err, user) => {
-            if (err) {
-                return err;
-            }
+const refreshAccessToken = (refreshToken) => {
+    try {
+        console.log("Refreshing access token...");
+        const user = verifyRefreshToken(refreshToken);
+        const accessToken = generateAccessToken(user);
 
-            return generateAccessToken(user);
-        }
-    );
-
-    return accessToken;
+        return { user, accessToken };
+    } catch (error) {
+        console.log(error);
+        throw new Error(error);
+    }
 };
 
-export { generateAccessToken, generateRefreshToken, refreshAccessToken };
+const verifyAccessToken = (accessToken) => {
+    try {
+        console.log("Verifying access token...");
+        const user = jwt.verify(
+            accessToken,
+            process.env.JWT_ACCESS_TOKEN_SECRET
+        );
+        return user;
+    } catch (error) {
+        console.log(error);
+        throw new Error(error);
+    }
+};
+
+const verifyRefreshToken = (refreshToken) => {
+    try {
+        console.log("Verifying refresh token...");
+        const user = jwt.verify(
+            refreshToken,
+            process.env.JWT_REFRESH_TOKEN_SECRET
+        );
+        return user;
+    } catch (error) {
+        console.log(error);
+        throw new Error(error);
+    }
+};
+
+export {
+    generateAccessToken,
+    generateRefreshToken,
+    verifyAccessToken,
+    verifyRefreshToken,
+    refreshAccessToken,
+};
