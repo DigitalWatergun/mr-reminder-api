@@ -15,6 +15,10 @@ RUN npm install
 # Bundle app source
 COPY . .
 RUN npm run build:prod
+RUN rm -rf src
+RUN rm -rf webpack* 
+RUN rm -rf .eslint*
+RUN rm -rf .prettierrc
 
 # The port that the app will run on
 EXPOSE 3001
