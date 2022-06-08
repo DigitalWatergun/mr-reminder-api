@@ -2,12 +2,12 @@ import _ from "lodash";
 import { randomBytes } from "crypto";
 import bcrypt from "bcrypt";
 import { v4 as uuid } from "uuid";
-import { OAuth2Client } from "google-auth-library";
 import { generateAccessToken, generateRefreshToken } from "../auth.js";
 import {
     queryUserById,
     queryUserByUsername,
     queryUserByEmail,
+    queryOrCreateUserById,
     createUser,
     updateUser,
     removeRegisterHash,
@@ -19,26 +19,34 @@ import {
 } from "../validator/validator.js";
 import { removeRemindersByUserId } from "../services/reminderService.js";
 import {
+    getGoogleOAuthTokens,
+    getGoogleUser,
+} from "../services/googleService.js";
+import {
     sendRegistrationEmail,
     sendTempPassword,
 } from "../emitter/notifications/mailer/mailer.js";
 import dotenv from "dotenv";
 dotenv.config();
 
-const verifyGoogleToken = async (token) => {
-    try {
-        const client = new OAuth2Client(process.env.GOOGLE_OAUTH_CLIENT_ID);
+const accessTokenCookieOptions = {
+    domain: process.env.DOMAIN,
+    httpOnly: true,
+    maxAge: 600000,
+};
 
-        const ticket = await client.verifyIdToken({
-            idToken: token,
-            audience: process.env.GOOGLE_OAUTH_CLIENT_ID,
-        });
+const refreshTokenCookieOptions = {
+    ...accessTokenCookieOptions,
+    maxAge: 60 * 60 * 1000,
+};
 
-        return ticket;
-    } catch (err) {
-        return err;
-        // account for error return
-    }
+const returnJsonObjects = (user) => {
+    return {
+        userId: user._id,
+        username: user.userDisplayName,
+        changePassword: user.changePassword,
+        type: user.type,
+    };
 };
 
 const addUser = async (req, res) => {
@@ -84,126 +92,61 @@ const addUser = async (req, res) => {
 const loginUser = async (req, res) => {
     const loginData = req.body;
 
-    if (loginData.authType === "google") {
-        const token = loginData.data.credential;
-        const ticketResponse = await verifyGoogleToken(token);
-        const ticketPayload = ticketResponse.payload;
+    const username = _.toLower(loginData.data.username);
+    const user = (await queryUserByUsername(username, "local"))[0];
 
-        const user = (
-            await queryUserByUsername(ticketPayload.email, "google")
-        )[0];
-        if (user === undefined) {
-            const user = {
-                _id: ticketPayload.sub,
-                type: "google",
-                active: true,
-                username: ticketPayload.email,
-                userDisplayName: ticketPayload.given_name,
-                email: ticketPayload.email,
-            };
-            const result = await createUser(user);
-            if (result.error) {
-                if (
-                    result.error.message.includes(
-                        "E11000 duplicate key error collection"
-                    )
-                ) {
-                    res.status(500).send(
-                        "An account with this username or email already exists."
-                    );
-                } else {
-                    res.status(500).send(result.error.message);
-                }
-            } else {
-                res.cookie("jwtg", token, {
-                    domain: process.env.BASE_URL,
-                    httpOnly: true,
-                    maxAge: 600000,
-                });
-                res.json({
-                    userId: user._id,
-                    username: user.userDisplayName,
-                    type: user.type,
-                });
-            }
-        } else {
-            res.cookie("jwtg", token, {
-                domain: process.env.BASE_URL,
-                httpOnly: true,
-                maxAge: 600000,
-            });
-            res.json({
-                userId: user._id,
-                username: user.userDisplayName,
-                type: user.type,
-            });
-        }
-    } else if (loginData.authType === "local") {
-        const username = _.toLower(loginData.data.username);
-        const user = (await queryUserByUsername(username, "local"))[0];
-
-        if (user === undefined) {
-            res.status(400).json("The username or password is incorrect.");
-            console.log("The user does not exist.");
-        } else {
-            if (
-                !(await bcrypt.compare(loginData.data.password, user.password))
-            ) {
-                console.log("The username or password is not correct.");
-                res.status(403).send("The username or password is incorrect.");
-            } else if (loginData.data.registerHash !== undefined) {
-                if (loginData.data.registerHash === user.registerHash) {
-                    const accessToken = generateAccessToken(user);
-                    const refreshToken = generateRefreshToken(user);
-                    user["active"] = true;
-                    await updateUser(user);
-                    await removeRegisterHash(user);
-                    res.cookie("jwta", accessToken, {
-                        domain: process.env.BASE_URL,
-                        httpOnly: true,
-                        maxAge: 600000,
-                    });
-                    res.cookie("jwtr", refreshToken, {
-                        domain: process.env.BASE_URL,
-                        httpOnly: true,
-                        maxAge: 60 * 60 * 1000,
-                    });
-                    res.json({
-                        userId: user._id,
-                        username: user.userDisplayName,
-                        changePassword: user.changePassword,
-                        type: user.type,
-                    });
-                } else {
-                    res.status(401).send("The activation code is incorrect.");
-                }
-            } else if (!user.active) {
-                res.status(401).send(
-                    "The user needs to be activated. Please check your email for the activation code."
-                );
-            } else {
-                console.log("The password is correct.");
+    if (user === undefined) {
+        res.status(400).json("The username or password is incorrect.");
+        console.log("The user does not exist.");
+    } else {
+        if (!(await bcrypt.compare(loginData.data.password, user.password))) {
+            console.log("The username or password is not correct.");
+            res.status(403).send("The username or password is incorrect.");
+        } else if (loginData.data.registerHash !== undefined) {
+            if (loginData.data.registerHash === user.registerHash) {
                 const accessToken = generateAccessToken(user);
                 const refreshToken = generateRefreshToken(user);
-                res.cookie("jwta", accessToken, {
-                    domain: process.env.BASE_URL,
-                    httpOnly: true,
-                    maxAge: 600000,
-                });
-                res.cookie("jwtr", refreshToken, {
-                    domain: process.env.BASE_URL,
-                    httpOnly: true,
-                    maxAge: 60 * 60 * 1000,
-                });
-                res.json({
-                    userId: user._id,
-                    username: user.userDisplayName,
-                    changePassword: user.changePassword,
-                    type: user.type,
-                });
+                user["active"] = true;
+                await updateUser(user);
+                await removeRegisterHash(user);
+                res.cookie("jwta", accessToken, accessTokenCookieOptions);
+                res.cookie("jwtr", refreshToken, refreshTokenCookieOptions);
+                res.json(returnJsonObjects(user));
+            } else {
+                res.status(401).send("The activation code is incorrect.");
             }
+        } else if (!user.active) {
+            res.status(401).send(
+                "The user needs to be activated. Please check your email for the activation code."
+            );
+        } else {
+            console.log("The password is correct.");
+            const accessToken = generateAccessToken(user);
+            const refreshToken = generateRefreshToken(user);
+            res.cookie("jwta", accessToken, accessTokenCookieOptions);
+            res.cookie("jwtr", refreshToken, refreshTokenCookieOptions);
+            res.json(returnJsonObjects(user));
         }
     }
+};
+
+const loginWithGoogle = async (req, res) => {
+    const code = req.body.code;
+
+    const { id_token: idToken, access_token: googleAccessToken } =
+        await getGoogleOAuthTokens(code);
+
+    const googleUser = await getGoogleUser(idToken, googleAccessToken);
+
+    if (!googleUser.verified_email)
+        return res.status(403).send("Google account is not verified");
+
+    const user = await queryOrCreateUserById(googleUser);
+    const accessToken = generateAccessToken(user);
+    const refreshToken = generateRefreshToken(user);
+    res.cookie("jwta", accessToken, accessTokenCookieOptions);
+    res.cookie("jwtr", refreshToken, refreshTokenCookieOptions);
+    res.json(returnJsonObjects(user));
 };
 
 const changeUserPassword = async (req, res) => {
@@ -261,7 +204,6 @@ const logoutUser = async (req, res) => {
     if (req.cookies) {
         res.clearCookie("jwta");
         res.clearCookie("jwtr");
-        res.clearCookie("jwtg");
     }
     res.send("User has been logged out.");
 };
@@ -274,7 +216,6 @@ const deleteAccount = async (req, res) => {
         if (result.deletedCount === 1) {
             res.clearCookie("jwta");
             res.clearCookie("jwtr");
-            res.clearCookie("jwtg");
             res.send(result);
         } else {
             res.status(500).send("Unable to delete user.");
@@ -291,4 +232,5 @@ export {
     resetUserPassword,
     logoutUser,
     deleteAccount,
+    loginWithGoogle,
 };

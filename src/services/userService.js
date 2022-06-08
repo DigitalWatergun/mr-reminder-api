@@ -18,6 +18,25 @@ const queryUserByEmail = async (email) => {
     return user;
 };
 
+const queryOrCreateUserById = async (googleUser) => {
+    const user = await queryUserByEmail(googleUser.email);
+
+    if (!user) {
+        const newUser = {
+            _id: googleUser.id,
+            type: "google",
+            active: true,
+            username: googleUser.email.split("@")[0],
+            userDisplayName: googleUser.given_name,
+            email: googleUser.email,
+        };
+        const user = await createUser(newUser);
+        return user;
+    }
+
+    return user;
+};
+
 const createUser = async (data) => {
     try {
         const newUser = User({
@@ -62,6 +81,7 @@ export {
     queryUserById,
     queryUserByUsername,
     queryUserByEmail,
+    queryOrCreateUserById,
     createUser,
     updateUser,
     removeRegisterHash,
