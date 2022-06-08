@@ -41,7 +41,6 @@ const createUser = async (data) => {
     try {
         const newUser = User({
             _id: data._id,
-            type: data.type,
             active: data.active,
             username: data.username,
             userDisplayName: data.userDisplayName,

@@ -56,7 +56,6 @@ const addUser = async (req, res) => {
     } else {
         const user = {
             _id: uuid(),
-            type: "local",
             active: false,
             username: _.toLower(req.body.username),
             userDisplayName: req.body.username,
